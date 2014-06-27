@@ -1,0 +1,60 @@
+
+--- lib_mysqludf_curl ---
+
+As complete an interface to cURL as makes sense in a MySQL UDF
+
+USAGE:
+
+SET filename = curl([newline delimited string of options]);
+
+RETURNS a temporary filename containing the result (readable by LOAD_FILE)
+
+SET encoded = url_encode([unescaped string]);
+
+RETURNS an appropriately url encoded string for use in query strings and
+    application/x-www-form-urlencoded POSTS
+
+EXAMPLES:
+
+SET filename = curl('CURLOPT_URL http://google.com\nCURLOPT_FOLLOWLOCATION 1');
+
+SET filename = curl('CURLOPT_URL http://mysite.com?myfield=',
+                    url_encode(user_input),'&opt=1\n',
+                    'CURLOPT_FOLLOWLOCATION 1');
+
+SET filename = curl(CONCAT('CURLOPT_URL http://google.com\n',
+                           'CURLOPT_FOLLOWLOCATION 1\n',
+                           'CURLOPT_PREQUOTE uptime > /dev/null; touch /dev/null\n',
+                           'CURLOPT_HTTPAUTH CURLAUTH_DIGEST | CURLAUTH_NTLM_WB'));
+
+The only CURLOPT options that are not available for use with the UDF are
+    callback and shared memory options. (Also, your installed version of curl
+    may have more or less options - less will cause compiler complaints)
+
+Any curl options that take constants, like CURLAUTH_DIGEST, CURLUSESSL_TRY, etc.
+    should be supplied with the exact constant name (all caps and underscores)
+    
+Any curl options that require an 'slist' for setopt, like CURLOPT_QUOTE, 
+    CUROPT_RESOLVE, CURLOPT_MAIL_RCPT, etc. should be supplied a semicolon 
+    delimited list
+
+Any curl options that take a bitmask should be ORed using curl's defined
+    constants as above.
+
+    
+--- INSTALLATION NOTES ---
+
+Near the top of the source file (lib_mysqludf_curl.c), there is a #define for
+    TEMP_DIR that can be modified (and must be for use on Windows). Because
+    the UDF uses the standard 255 character return buffer for the curl()
+    function, TEMP_DIR MUST BE FEWER THAN 237 CHARACTERS IN LENGTH
+    
+Note also that mysqlclient development libraries must be installed for compiling
+    as well as libcurl
+
+
+I will add to this README as questions are asked, issues raised, etc.
+
+-Jeff Walter, maintainer
+lowadobe@gmail.com
+
