@@ -18,9 +18,9 @@ EXAMPLES:
 
 SET filename = curl('CURLOPT_URL http://google.com\nCURLOPT_FOLLOWLOCATION 1');
 
-SET filename = curl('CURLOPT_URL http://mysite.com?myfield=',
-                    url_encode(user_input),'&opt=1\n',
-                    'CURLOPT_FOLLOWLOCATION 1');
+SET filename = curl(CONCAT('CURLOPT_URL http://mysite.com?myfield=',
+                           url_encode(user_input),'&opt=1\n',
+                           'CURLOPT_FOLLOWLOCATION 1'));
 
 SET filename = curl(CONCAT('CURLOPT_URL http://google.com\n',
                            'CURLOPT_FOLLOWLOCATION 1\n',
