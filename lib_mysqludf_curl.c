@@ -1,5 +1,5 @@
-/* 
-	lib_mysqludf_curl - a library for sending email
+/*
+        lib_mysqludf_curl - a library for sending and receiving via cURL
 	Copyright (C) 2014 Jeff Walter 
 	web: http://www.mysqludf.org/
 	email: lowadobe@gmail.com
