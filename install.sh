@@ -32,7 +32,7 @@ fi
 
 echo -e "\nPlease provide your MySQL root password"
 
-mysql -u root -p mysql < lib_mysqludf_sys.sql
+mysql -u root -p mysql < lib_mysqludf_curl.sql
 
 if test $? -ne 0; then
 	echo "ERROR: unable to install the UDF"
