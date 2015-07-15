@@ -822,6 +822,7 @@ char *udf_setopt(CURL *hnd, char *op, struct curl_slist **slists){
     return val;
 }
 
+
 char *curl(
 	UDF_INIT *initid
 ,	UDF_ARGS *args
@@ -836,9 +837,12 @@ char *curl(
     char *op;
     FILE *datfile;
     char *dat_filename = malloc(strlen(TEMP_DIR) + 18);
+    FILE *infile;
+    char *infilename;
     strcpy(dat_filename, TEMP_DIR);
     strcat(dat_filename, "/curl_resp_XXXXXX");
     int dat_d, i;
+    size_t len;
 
     struct curl_slist *slists[9];
     for(i = 0; i < 9; i++)
@@ -869,6 +873,20 @@ char *curl(
             if(op[0] == '1')
                 curl_easy_setopt(hnd, CURLOPT_HEADERDATA, (void *)datfile);
             opts = op;
+        }else if(strncmp(op, "CURLOPT_READDATA", 16) == 0){
+            op += 16;
+            op += strspn(op, " \t");
+            len = strcspn(op, "\n");
+            infilename = malloc(len + 1);
+            strncpy(infilename, op, len);
+            infilename[len] = '\0';
+            infile = fopen(infilename, "rb");
+            if(infile){
+            	    curl_easy_setopt(hnd, CURLOPT_READDATA, infile);
+            	    curl_easy_setopt(hnd, CURLOPT_UPLOAD, 1L);
+            };
+            free(infilename);
+            opts = op;
         }else{
             opts = udf_setopt(hnd, op, slists);
         };
@@ -881,14 +899,15 @@ char *curl(
 	hnd = NULL;
 	
 	fclose(datfile);
+        if(infile) fclose(infile);
 
 	if(ret) return NULL;
 
 	memcpy(result, dat_filename, strlen(dat_filename));
 	*length = strlen(dat_filename);
+	free(dat_filename);
 	return result;
 }
-
 
 
 my_bool url_encode_init(

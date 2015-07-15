@@ -41,6 +41,8 @@ Any curl options that require an 'slist' for setopt, like CURLOPT_QUOTE,
 Any curl options that take a bitmask should be ORed using curl's defined
     constants as above.
 
+For File uploads (FTP, SMTP, etc) use 'CURLOPT_READDATA /path/to/file\n'
+
     
 --- INSTALLATION NOTES ---
 
