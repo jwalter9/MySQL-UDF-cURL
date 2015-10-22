@@ -88,6 +88,29 @@ char *curl(
 
 
 DLLEXP 
+my_bool curl_buffered_init(
+	UDF_INIT *initid
+,	UDF_ARGS *args
+,	char *message
+);
+
+DLLEXP 
+void curl_buffered_deinit(
+	UDF_INIT *initid
+);
+
+DLLEXP 
+char *curl_buffered(
+	UDF_INIT *initid
+,	UDF_ARGS *args
+,	char* result
+,	unsigned long* length
+,	char *is_null
+,	char *error
+);
+
+
+DLLEXP 
 my_bool url_encode_init(
 	UDF_INIT *initid
 ,	UDF_ARGS *args
@@ -837,7 +860,7 @@ char *curl(
     char *op;
     FILE *datfile;
     char *dat_filename = malloc(strlen(TEMP_DIR) + 18);
-    FILE *infile;
+    FILE *infile = NULL;
     char *infilename;
     strcpy(dat_filename, TEMP_DIR);
     strcat(dat_filename, "/curl_resp_XXXXXX");
@@ -908,6 +931,152 @@ char *curl(
 	free(dat_filename);
 	return result;
 }
+
+
+#ifdef __GNUC__
+
+my_bool curl_buffered_init(
+	UDF_INIT *initid
+,	UDF_ARGS *args
+,	char *message
+){
+	if(args->arg_count != 1
+	|| args->arg_type[0]!=STRING_RESULT){
+		strcpy(message,
+			"Expected 1 parameter: list of CURLOPT options"
+		);
+		return 1;
+	};
+	return 0;
+}
+void curl_buffered_deinit(
+	UDF_INIT *initid
+){
+    free(initid->ptr);
+}
+
+
+char *curl_buffered(
+	UDF_INIT *initid
+,	UDF_ARGS *args
+,	char* result
+,	unsigned long* length
+,	char *is_null
+,	char *error
+){
+    CURLcode ret;
+    CURL *hnd;
+    char *opts = args->args[0];
+    char *op;
+    FILE *datfile = NULL;
+    char *resultbuffer;
+    size_t resultsize;
+    FILE *infile = NULL;
+    char *infilename;
+    int i;
+    size_t len;
+
+    struct curl_slist *slists[9];
+    for(i = 0; i < 9; i++)
+        slists[i] = NULL;
+
+    hnd = curl_easy_init();
+
+    datfile = open_memstream(&resultbuffer, &resultsize);
+    if(!datfile){
+        strcpy(error, "open_memstream failed");
+        *error = 1;
+        return NULL;
+    };
+    curl_easy_setopt(hnd, CURLOPT_WRITEDATA, (void *)datfile);
+    curl_easy_setopt(hnd, CURLOPT_NOPROGRESS, 1);
+    curl_easy_setopt(hnd, CURLOPT_ERRORBUFFER, error);
+    
+    while(strlen(opts)){
+        op = strstr(opts, "CURLOPT_");
+        if(!op) break;
+        if(strncmp(op, "CURLOPT_HEADER", 14) == 0){
+            op += 14;
+            op += strspn(op, " \t");
+            if(op[0] == '1')
+                curl_easy_setopt(hnd, CURLOPT_HEADERDATA, (void *)datfile);
+            opts = op;
+        }else if(strncmp(op, "CURLOPT_READDATA", 16) == 0){
+            op += 16;
+            op += strspn(op, " \t");
+            len = strcspn(op, "\n");
+            infilename = malloc(len + 1);
+            strncpy(infilename, op, len);
+            infilename[len] = '\0';
+            infile = fopen(infilename, "rb");
+            if(infile){
+            	    curl_easy_setopt(hnd, CURLOPT_READDATA, infile);
+            	    curl_easy_setopt(hnd, CURLOPT_UPLOAD, 1L);
+            };
+            free(infilename);
+            opts = op;
+        }else{
+            opts = udf_setopt(hnd, op, slists);
+        };
+    };
+
+	ret = curl_easy_perform(hnd);
+	for(i = 0; i < 9 && slists[i]; i++)
+    	curl_slist_free_all(slists[i]);
+	curl_easy_cleanup(hnd);
+	hnd = NULL;
+	if(infile) fclose(infile);
+	fclose(datfile);
+
+	if(ret){
+		free(resultbuffer);
+		sprintf(error, "cURL error: %d", ret);
+		*error = 1;
+		return NULL;
+	};
+
+	initid->ptr = malloc(resultsize + 1);
+	if(!initid->ptr){
+		strcpy(error, "Failed to allocate memory for result");
+		free(resultbuffer);
+		*error = 1;
+		return NULL;
+	};
+	*length = resultsize;
+	strncpy(initid->ptr, resultbuffer, resultsize);	
+	free(resultbuffer);
+
+	return initid->ptr;
+}
+
+#else
+
+my_bool curl_buffered_init(
+	UDF_INIT *initid
+,	UDF_ARGS *args
+,	char *message
+){
+        strcpy(message,"curl_buffered requires the GNU C library");
+        return 1;
+}
+void curl_buffered_deinit(
+	UDF_INIT *initid
+){
+}
+
+
+char *curl_buffered(
+	UDF_INIT *initid
+,	UDF_ARGS *args
+,	char* result
+,	unsigned long* length
+,	char *is_null
+,	char *error
+){
+	return NULL;
+}
+
+#endif
 
 
 my_bool url_encode_init(
