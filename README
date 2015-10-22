@@ -9,18 +9,28 @@ SET filename = curl([newline delimited string of options]);
 
 RETURNS a temporary filename containing the result (readable by LOAD_FILE)
 
+
+SET result = curl_buffered([newline delimited string of options]);
+
+RETURNS the result of the cURL transaction (This function uses open_memstream,
+    which I understand to be available only on GNU systems. Compiling
+    on other systems will result in a function that only ever returns
+    an error.)
+
+
 SET encoded = url_encode([unescaped string]);
 
 RETURNS an appropriately url encoded string for use in query strings and
     application/x-www-form-urlencoded POSTS
 
+
 EXAMPLES:
 
 SET filename = curl('CURLOPT_URL http://google.com\nCURLOPT_FOLLOWLOCATION 1');
 
-SET filename = curl(CONCAT('CURLOPT_URL http://mysite.com?myfield=',
-                           url_encode(user_input),'&opt=1\n',
-                           'CURLOPT_FOLLOWLOCATION 1'));
+SET result = curl_buffered(CONCAT('CURLOPT_URL http://mysite.com?myfield=',
+                                  url_encode(user_input),'&opt=1\n',
+                                  'CURLOPT_FOLLOWLOCATION 1'));
 
 SET filename = curl(CONCAT('CURLOPT_URL http://google.com\n',
                            'CURLOPT_FOLLOWLOCATION 1\n',
